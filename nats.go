@@ -34,6 +34,7 @@ const (
 	DefaultMaxReconnect  = 10
 	DefaultReconnectWait = 2 * time.Second
 	DefaultTimeout       = 2 * time.Second
+	DefaultMaxChanLen    = 65536
 )
 
 var (
@@ -55,6 +56,9 @@ var DefaultOptions = Options{
 	MaxReconnect:   DefaultMaxReconnect,
 	ReconnectWait:  DefaultReconnectWait,
 	Timeout:        DefaultTimeout,
+	// The size of the buffered channel used between the socket
+	// Go routine and the message delivery or sync subscription.
+	MaxChanLen: DefaultMaxChanLen,
 }
 
 type Status int
@@ -91,13 +95,10 @@ type Options struct {
 	DisconnectedCB ConnHandler
 	ReconnectedCB  ConnHandler
 	AsyncErrorCB   ErrHandler
+	MaxChanLen     int
 }
 
 const (
-	// The size of the buffered channel used between the socket
-	// Go routine and the message delivery or sync subscription.
-	maxChanLen = 65536
-
 	// Scratch storage for assembling protocol headers
 	scratchSize = 512
 
@@ -954,7 +955,7 @@ func (nc *Conn) processMsg(msg []byte) {
 	m := &Msg{Data: newMsg, Subject: subj, Reply: reply, Sub: sub}
 
 	if sub.mch != nil {
-		if len(sub.mch) >= maxChanLen {
+		if len(sub.mch) >= nc.Opts.MaxChanLen {
 			nc.processSlowConsumer(sub)
 		} else {
 			// Clear always
@@ -1190,7 +1191,7 @@ func (nc *Conn) subscribe(subj, queue string, cb MsgHandler) (*Subscription, err
 	}
 
 	sub := &Subscription{Subject: subj, Queue: queue, mcb: cb, conn: nc}
-	sub.mch = make(chan *Msg, maxChanLen)
+	sub.mch = make(chan *Msg, nc.Opts.MaxChanLen)
 
 	// If we have an async callback, start up a sub specific
 	// Go routine to deliver the messages.
