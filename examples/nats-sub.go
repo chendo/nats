@@ -5,10 +5,10 @@ package main
 
 import (
 	"flag"
+	"github.com/chendo/nats"
 	"log"
 	"runtime"
 	"strings"
-	"github.com/apcera/nats"
 )
 
 func usage() {
@@ -39,7 +39,7 @@ func main() {
 	opts := nats.DefaultOptions
 	opts.Servers = strings.Split(*urls, ",")
 	for i, s := range opts.Servers {
-    		opts.Servers[i] = strings.Trim(s, " ")
+		opts.Servers[i] = strings.Trim(s, " ")
 	}
 	opts.Secure = *ssl
 
